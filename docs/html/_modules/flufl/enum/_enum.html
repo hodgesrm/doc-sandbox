@@ -1,0 +1,425 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>flufl.enum._enum &#8212; Pyvcloud  documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for flufl.enum._enum</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2004-2017 Barry Warsaw</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of flufl.enum</span>
+<span class="c1">#</span>
+<span class="c1"># flufl.enum is free software: you can redistribute it and/or modify it under</span>
+<span class="c1"># the terms of the GNU Lesser General Public License as published by the Free</span>
+<span class="c1"># Software Foundation, version 3 of the License.</span>
+<span class="c1">#</span>
+<span class="c1"># flufl.enum is distributed in the hope that it will be useful, but WITHOUT</span>
+<span class="c1"># ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or</span>
+<span class="c1"># FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License</span>
+<span class="c1"># for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU Lesser General Public License</span>
+<span class="c1"># along with flufl.enum.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Barry Warsaw &lt;barry@python.org&gt;</span>
+
+<span class="sd">&quot;&quot;&quot;Python enumerations.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">unicode_literals</span>
+
+<span class="n">__metaclass__</span> <span class="o">=</span> <span class="nb">type</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;Enum&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;EnumValue&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;IntEnum&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;make&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">operator</span> <span class="k">import</span> <span class="n">itemgetter</span>
+
+<span class="n">COMMASPACE</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span>
+<span class="n">SPACE</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span>
+<span class="n">IDENTIFIER_RE</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;^[a-zA-Z_][a-zA-Z0-9_]*$&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">EnumMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Meta class for Enums.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attributes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create an Enum class.</span>
+
+<span class="sd">        :param cls: The class being defined.</span>
+<span class="sd">        :param name: The name of the class.</span>
+<span class="sd">        :param bases: The class&#39;s base classes.</span>
+<span class="sd">        :param attributes: The class attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EnumMetaclass</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attributes</span><span class="p">)</span>
+        <span class="c1"># Store EnumValues here for easy access.</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Figure out if this class has a custom factory for building enum</span>
+        <span class="c1"># values.  The default is EnumValue, but the class (or one of its</span>
+        <span class="c1"># bases) can declare a custom one with a special attribute.</span>
+        <span class="n">factory</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;__value_factory__&#39;</span><span class="p">)</span>
+        <span class="c1"># Figure out the set of enum values on the base classes, to ensure</span>
+        <span class="c1"># that we don&#39;t get any duplicate values.  At the same time, check the</span>
+        <span class="c1"># base classes for the special attribute.</span>
+        <span class="k">for</span> <span class="n">basecls</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">basecls</span><span class="p">,</span> <span class="s1">&#39;_enums&#39;</span><span class="p">):</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">basecls</span><span class="o">.</span><span class="n">_enums</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">basecls</span><span class="p">,</span> <span class="s1">&#39;__value_factory__&#39;</span><span class="p">):</span>
+                <span class="n">basecls_factory</span> <span class="o">=</span> <span class="n">basecls</span><span class="o">.</span><span class="n">__value_factory__</span>
+                <span class="k">if</span> <span class="n">factory</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">basecls_factory</span> <span class="o">!=</span> <span class="n">factory</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="s1">&#39;Conflicting enum factory in base class: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">basecls_factory</span><span class="p">))</span>
+                <span class="n">factory</span> <span class="o">=</span> <span class="n">basecls_factory</span>
+        <span class="c1"># Set the factory default if necessary.</span>
+        <span class="k">if</span> <span class="n">factory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">factory</span> <span class="o">=</span> <span class="n">EnumValue</span>
+        <span class="c1"># For each class attribute, create an enum value and store that back</span>
+        <span class="c1"># on the class instead of the original value.  Skip Python reserved</span>
+        <span class="c1"># names.  Also add a mapping from the original value to the enum value</span>
+        <span class="c1"># instance so we can return the same object on conversion.</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;__&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">attr</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;__&#39;</span><span class="p">)):</span>
+                <span class="n">value</span>  <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
+                <span class="n">enumval</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="p">:</span>
+                    <span class="n">other</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="p">[</span><span class="n">value</span><span class="p">]</span>
+                    <span class="c1"># Without this, sort order is undefined and causes</span>
+                    <span class="c1"># unpredictable results for the test suite.</span>
+                    <span class="n">first</span> <span class="o">=</span> <span class="p">(</span><span class="n">attr</span> <span class="k">if</span> <span class="n">attr</span> <span class="o">&lt;</span> <span class="n">other</span> <span class="k">else</span> <span class="n">other</span><span class="p">)</span>
+                    <span class="n">second</span> <span class="o">=</span> <span class="p">(</span><span class="n">other</span> <span class="k">if</span> <span class="n">attr</span> <span class="o">&lt;</span> <span class="n">other</span> <span class="k">else</span> <span class="n">attr</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Conflicting enum value &#39;</span><span class="si">{}</span><span class="s2">&#39; &quot;</span>
+                                     <span class="s2">&quot;for names: &#39;</span><span class="si">{}</span><span class="s2">&#39; and &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                         <span class="n">value</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">))</span>
+                <span class="c1"># Store as an attribute on the class, and save the attr name.</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">enumval</span><span class="p">)</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr</span>
+
+    <span class="k">def</span> <span class="nf">__dir__</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="c1"># For Python 3.2, we must explicitly convert the dict view to a list.</span>
+        <span class="c1"># Order is not guaranteed, so don&#39;t sort it.</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="c1"># We want predictable reprs.  Because base Enum items can have any</span>
+        <span class="c1"># value, the only reliable way to sort the keys for the repr is based</span>
+        <span class="c1"># on the attribute name, which must be Python identifiers.</span>
+        <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{0}</span><span class="s1"> {{</span><span class="si">{1}</span><span class="s1">}}&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">COMMASPACE</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">: </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">))))</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+            <span class="k">yield</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">attr</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">attr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># If this is an EnumValue, try it&#39;s .value attribute.</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">):</span>
+                <span class="n">attr</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">attr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># It wasn&#39;t value-ish -- try the attribute name.  This was</span>
+                <span class="c1"># deprecated in LP: #1167091.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Enum[item_name] is deprecated; &#39;</span>
+                                  <span class="s1">&#39;use getattr(Enum, item_name)&#39;</span><span class="p">,</span>
+                                  <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="c1"># One-argument calling is a deprecated synonym for getitem.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;MyEnum(arg) is deprecated; use MyEnum[arg]&#39;</span><span class="p">,</span>
+                          <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">name</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">return</span> <span class="n">_make</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EnumValue</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Class to represent an enumeration value.</span>
+
+<span class="sd">    EnumValue(&#39;Color&#39;, &#39;red&#39;, 12) prints as &#39;Color.red&#39; and can be converted</span>
+<span class="sd">    to the integer 12.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enum</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enum</span> <span class="o">=</span> <span class="n">enum</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;&lt;EnumValue: </span><span class="si">{0}</span><span class="s1">.</span><span class="si">{1}</span><span class="s1"> [value=</span><span class="si">{2}</span><span class="s1">]&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_enum</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">.</span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_enum</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__int__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;int() is deprecated; use IntEnums&#39;</span><span class="p">,</span>
+                      <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+    <span class="k">def</span> <span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_enum</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">enum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the class associated with the enum value.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_enum</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the name of the enum value.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the underlying value.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+    <span class="c1"># Support only comparison by identity and equality.  Ordered comparisions</span>
+    <span class="c1"># are not supported.</span>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="ow">is</span> <span class="n">other</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">other</span>
+
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># In Python 3, returning NotImplemented from an ordered comparison</span>
+        <span class="c1"># operator will cause a TypeError to be raised.  This doesn&#39;t work in</span>
+        <span class="c1"># Python 2 though, and you&#39;d end up with working, but incorrect,</span>
+        <span class="c1"># ordered comparisons.  In Python 2 we raise the TypeError explicitly.</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;unorderable types: </span><span class="si">{}</span><span class="s1">() &lt; </span><span class="si">{}</span><span class="s1">()&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;unorderable types: </span><span class="si">{}</span><span class="s1">() &gt; </span><span class="si">{}</span><span class="s1">()&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;unorderable types: </span><span class="si">{}</span><span class="s1">() &lt;= </span><span class="si">{}</span><span class="s1">()&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;unorderable types: </span><span class="si">{}</span><span class="s1">() &gt;= </span><span class="si">{}</span><span class="s1">()&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="fm">__hash__</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__hash__</span>
+
+
+<span class="c1"># Define the Enum class using metaclass syntax compatible with both Python 2</span>
+<span class="c1"># and Python 3.</span>
+<span class="n">Enum</span> <span class="o">=</span> <span class="n">EnumMetaclass</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="s1">&#39;Enum&#39;</span><span class="p">),</span> <span class="p">(),</span> <span class="p">{</span>
+    <span class="s1">&#39;__doc__&#39;</span><span class="p">:</span> <span class="s1">&#39;The public API Enum class.&#39;</span><span class="p">,</span>
+    <span class="p">})</span>
+
+
+<span class="k">class</span> <span class="nc">IntEnumValue</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">EnumValue</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An EnumValue that is also an integer.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">enum</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">IntEnumValue</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="fm">__repr__</span> <span class="o">=</span> <span class="n">EnumValue</span><span class="o">.</span><span class="fm">__repr__</span>
+    <span class="fm">__str__</span> <span class="o">=</span> <span class="n">EnumValue</span><span class="o">.</span><span class="fm">__str__</span>
+
+    <span class="c1"># For Python 2 (Python 3 doesn&#39;t need this to work).</span>
+    <span class="fm">__eq__</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="fm">__eq__</span>
+    <span class="fm">__ne__</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="fm">__ne__</span>
+    <span class="fm">__le__</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="fm">__le__</span>
+    <span class="fm">__lt__</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="fm">__lt__</span>
+    <span class="fm">__gt__</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="fm">__gt__</span>
+    <span class="fm">__ge__</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="fm">__ge__</span>
+
+    <span class="c1"># The non-deprecated version of this method.</span>
+    <span class="k">def</span> <span class="nf">__int__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+    <span class="c1"># For slices and index().</span>
+    <span class="fm">__index__</span> <span class="o">=</span> <span class="fm">__int__</span>
+
+
+<span class="k">class</span> <span class="nc">IntEnumMetaclass</span><span class="p">(</span><span class="n">EnumMetaclass</span><span class="p">):</span>
+    <span class="c1"># Define an iteration over the integer values instead of the attribute</span>
+    <span class="c1"># names.</span>
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_enums</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+
+<span class="n">IntEnum</span> <span class="o">=</span> <span class="n">IntEnumMetaclass</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="s1">&#39;IntEnum&#39;</span><span class="p">),</span> <span class="p">(</span><span class="n">Enum</span><span class="p">,),</span> <span class="p">{</span>
+    <span class="s1">&#39;__doc__&#39;</span><span class="p">:</span> <span class="s1">&#39;A specialized enumeration with values that are also integers.&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;__value_factory__&#39;</span><span class="p">:</span> <span class="n">IntEnumValue</span><span class="p">,</span>
+    <span class="p">})</span>
+
+
+<span class="k">if</span> <span class="nb">str</span> <span class="ow">is</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="c1"># Python 2</span>
+    <span class="n">STRING_TYPE</span> <span class="o">=</span> <span class="n">basestring</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Python 3</span>
+    <span class="n">STRING_TYPE</span> <span class="o">=</span> <span class="nb">str</span>
+
+
+<span class="k">def</span> <span class="nf">_swap</span><span class="p">(</span><span class="n">sequence</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">sequence</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">value</span><span class="p">,</span> <span class="n">key</span>
+
+
+<span class="k">def</span> <span class="nf">_make</span><span class="p">(</span><span class="n">enum_class</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The common implementation for `Enum()` and `IntEnum()`.&quot;&quot;&quot;</span>
+    <span class="n">namespace</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">illegals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">have_strings</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># Auto-splitting of strings.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">STRING_TYPE</span><span class="p">):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="c1"># Look for dict-like arguments.  Specifically, it must have a callable</span>
+    <span class="c1"># .items() attribute.  Because of the way enumerate() works, here we have</span>
+    <span class="c1"># to swap the key/values.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">_swap</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">source</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">STRING_TYPE</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">have_strings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">have_strings</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">have_strings</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;heterogeneous source&#39;</span><span class="p">)</span>
+            <span class="n">namespace</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">IDENTIFIER_RE</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">illegals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">have_strings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">have_strings</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">have_strings</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;heterogeneous source&#39;</span><span class="p">)</span>
+            <span class="n">item_name</span><span class="p">,</span> <span class="n">item_value</span> <span class="o">=</span> <span class="n">item</span>
+            <span class="n">namespace</span><span class="p">[</span><span class="n">item_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">item_value</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">IDENTIFIER_RE</span><span class="p">,</span> <span class="n">item_name</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">illegals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">illegals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;non-identifiers: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">SPACE</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">illegals</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">EnumMetaclass</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="p">(</span><span class="n">enum_class</span><span class="p">,),</span> <span class="n">namespace</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">make</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return an Enum class from a name and source.</span>
+
+<span class="sd">    This is a convenience function for defining a new enumeration given an</span>
+<span class="sd">    existing sequence.  When an sequence is used, it is iterated over to get</span>
+<span class="sd">    the enumeration value items.  The sequence iteration can either return</span>
+<span class="sd">    strings or 2-tuples.  When strings are used, values are automatically</span>
+<span class="sd">    assigned starting from 1.  When 2-tuples are used, the first item of the</span>
+<span class="sd">    tuple is a string and the second item is the integer value.</span>
+
+<span class="sd">    `source` must be homogeneous.  You cannot mix string-only and 2-tuple</span>
+<span class="sd">    items in the sequence.</span>
+
+<span class="sd">    :param name: The resulting enum&#39;s class name.</span>
+<span class="sd">    :type name: byte string (or ASCII-only unicode string)</span>
+<span class="sd">    :param source: An object giving the enumeration value items.</span>
+<span class="sd">    :type source: A sequence of strings or 2-tuples.</span>
+<span class="sd">    :return: The new enumeration class.</span>
+<span class="sd">    :rtype: instance of `EnumMetaClass`</span>
+<span class="sd">    :raises ValueError: when a heterogeneous source is given, or when</span>
+<span class="sd">        non-identifiers are used as enumeration value names.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;make() is deprecated; use Enum(name, source)&#39;</span><span class="p">,</span>
+                  <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_make</span><span class="p">(</span><span class="n">Enum</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, VMware.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

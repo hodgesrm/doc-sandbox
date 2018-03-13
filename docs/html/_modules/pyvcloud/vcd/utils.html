@@ -1,0 +1,582 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pyvcloud.vcd.utils &#8212; Pyvcloud  documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for pyvcloud.vcd.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># VMware vCloud Python SDK</span>
+<span class="c1"># Copyright (c) 2014-2018 VMware, Inc. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">import</span> <span class="nn">humanfriendly</span>
+<span class="kn">from</span> <span class="nn">lxml</span> <span class="k">import</span> <span class="n">etree</span>
+<span class="kn">from</span> <span class="nn">lxml.objectify</span> <span class="k">import</span> <span class="n">NoneElement</span>
+<span class="kn">from</span> <span class="nn">pygments</span> <span class="k">import</span> <span class="n">formatters</span>
+<span class="kn">from</span> <span class="nn">pygments</span> <span class="k">import</span> <span class="n">highlight</span>
+<span class="kn">from</span> <span class="nn">pygments</span> <span class="k">import</span> <span class="n">lexers</span>
+
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">EntityType</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">get_links</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">NSMAP</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">VCLOUD_STATUS_MAP</span>
+
+
+<div class="viewcode-block" id="extract_id"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.extract_id">[docs]</a><span class="k">def</span> <span class="nf">extract_id</span><span class="p">(</span><span class="n">urn</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">urn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">urn</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">urn</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span></div>
+        <span class="k">return</span> <span class="n">urn</span>
+
+
+<div class="viewcode-block" id="org_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.org_to_dict">[docs]</a><span class="k">def</span> <span class="nf">org_to_dict</span><span class="p">(</span><span class="n">org</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_id</span><span class="p">(</span><span class="n">org</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">))</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;full_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">org</span><span class="o">.</span><span class="n">FullName</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">org</span><span class="o">.</span><span class="n">Description</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vdcs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">get_links</span><span class="p">(</span><span class="n">org</span><span class="p">,</span> <span class="n">media_type</span><span class="o">=</span><span class="n">EntityType</span><span class="o">.</span><span class="n">VDC</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;org_networks&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">get_links</span><span class="p">(</span><span class="n">org</span><span class="p">,</span> <span class="n">media_type</span><span class="o">=</span><span class="n">EntityType</span><span class="o">.</span><span class="n">ORG_NETWORK</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;catalogs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">get_links</span><span class="p">(</span><span class="n">org</span><span class="p">,</span> <span class="n">media_type</span><span class="o">=</span><span class="n">EntityType</span><span class="o">.</span><span class="n">CATALOG</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="p">]</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="vdc_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.vdc_to_dict">[docs]</a><span class="k">def</span> <span class="nf">vdc_to_dict</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="n">access_control_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vdc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_id</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;IsEnabled&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;is_enabled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">IsEnabled</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;AvailableNetworks&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">AvailableNetworks</span><span class="p">,</span> <span class="s1">&#39;Network&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;networks&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">vdc</span><span class="o">.</span><span class="n">AvailableNetworks</span><span class="o">.</span><span class="n">Network</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;networks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;ComputeCapacity&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Units</span><span class="p">),</span>
+            <span class="s1">&#39;allocated&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Allocated</span><span class="p">),</span>
+            <span class="s1">&#39;limit&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Limit</span><span class="p">),</span>
+            <span class="s1">&#39;reserved&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Reserved</span><span class="p">),</span>
+            <span class="s1">&#39;used&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Used</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="p">,</span> <span class="s1">&#39;Overhead&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Overhead</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;units&#39;</span><span class="p">:</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Units</span><span class="p">),</span>
+            <span class="s1">&#39;allocated&#39;</span><span class="p">:</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Allocated</span><span class="p">),</span>
+            <span class="s1">&#39;limit&#39;</span><span class="p">:</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Limit</span><span class="p">),</span>
+            <span class="s1">&#39;reserved&#39;</span><span class="p">:</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Reserved</span><span class="p">),</span>
+            <span class="s1">&#39;used&#39;</span><span class="p">:</span>
+            <span class="n">humanfriendly</span><span class="o">.</span><span class="n">format_size</span><span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Used</span><span class="p">))</span> <span class="o">*</span> <span class="n">humanfriendly</span><span class="o">.</span>
+                <span class="n">parse_size</span><span class="p">(</span><span class="s1">&#39;1 </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Units</span><span class="p">)))</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="p">,</span> <span class="s1">&#39;Overhead&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Overhead</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;AllocationModel&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;allocation_model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">AllocationModel</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;VmQuota&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vm_quota&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">VmQuota</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;Capabilities&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">Capabilities</span><span class="p">,</span> <span class="s1">&#39;SupportedHardwareVersions&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">Capabilities</span><span class="o">.</span><span class="n">SupportedHardwareVersions</span><span class="p">,</span>
+                    <span class="s1">&#39;SupportedHardwareVersion&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;supported_hw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">vdc</span><span class="o">.</span><span class="n">Capabilities</span><span class="o">.</span><span class="n">SupportedHardwareVersions</span><span class="o">.</span> \
+                <span class="n">SupportedHardwareVersion</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;supported_hw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;ResourceEntities&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">ResourceEntities</span><span class="p">,</span> <span class="s1">&#39;ResourceEntity&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vapps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vapp_templates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">vdc</span><span class="o">.</span><span class="n">ResourceEntities</span><span class="o">.</span><span class="n">ResourceEntity</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">VAPP</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vapps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">n</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">VAPP_TEMPLATE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vapp_templates&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="p">,</span> <span class="s1">&#39;VdcStorageProfiles&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">vdc</span><span class="o">.</span><span class="n">VdcStorageProfiles</span><span class="p">,</span> <span class="s1">&#39;VdcStorageProfile&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;storage_profiles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="n">vdc</span><span class="o">.</span><span class="n">VdcStorageProfiles</span><span class="o">.</span><span class="n">VdcStorageProfile</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;storage_profiles&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">access_control_settings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">access_control_settings</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="pvdc_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.pvdc_to_dict">[docs]</a><span class="k">def</span> <span class="nf">pvdc_to_dict</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="n">refs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a Provider Virtual Datacenter resource to a python dictionary.</span>
+
+<span class="sd">    :param pvdc: (ProviderVdcType): xml object</span>
+<span class="sd">    :param refs: (VdcReferences): xml object retrieved from</span>
+<span class="sd">           the ProviderVdcType.</span>
+<span class="sd">    :param metadata: (Metadata): xml object metadata retrieved from</span>
+<span class="sd">           the ProviderVdcType.</span>
+<span class="sd">    :return: (dict): dict representation of pvdc object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pvdc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_id</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">))</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">Description</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;IsEnabled&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;is_enabled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">IsEnabled</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;AvailableNetworks&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">AvailableNetworks</span><span class="p">,</span> <span class="s1">&#39;Network&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;networks&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">pvdc</span><span class="o">.</span><span class="n">AvailableNetworks</span><span class="o">.</span><span class="n">Network</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;networks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;ComputeCapacity&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Units</span><span class="p">),</span>
+            <span class="s1">&#39;total&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Total</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="c1"># process optional elements</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="p">,</span> <span class="s1">&#39;Allocation&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;allocation&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Allocation</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="p">,</span> <span class="s1">&#39;Reserved&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;reserved&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Reserved</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="p">,</span> <span class="s1">&#39;Used&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Used</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="p">,</span> <span class="s1">&#39;Overhead&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;cpu_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;overhead&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Cpu</span><span class="o">.</span><span class="n">Overhead</span><span class="p">)</span>
+
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Units</span><span class="p">),</span>
+            <span class="s1">&#39;total&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Total</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="c1"># process optional elements</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="p">,</span> <span class="s1">&#39;Allocation&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;allocation&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Allocation</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="p">,</span> <span class="s1">&#39;Reserved&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;reserved&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Reserved</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="p">,</span> <span class="s1">&#39;Used&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Used</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="p">,</span> <span class="s1">&#39;Overhead&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mem_capacity&#39;</span><span class="p">][</span><span class="s1">&#39;overhead&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">ComputeCapacity</span><span class="o">.</span><span class="n">Memory</span><span class="o">.</span><span class="n">Overhead</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;Capabilities&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">Capabilities</span><span class="p">,</span> <span class="s1">&#39;SupportedHardwareVersions&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">Capabilities</span><span class="o">.</span><span class="n">SupportedHardwareVersions</span><span class="p">,</span>
+                    <span class="s1">&#39;SupportedHardwareVersion&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;supported_hw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">pvdc</span><span class="o">.</span><span class="n">Capabilities</span><span class="o">.</span><span class="n">SupportedHardwareVersions</span><span class="o">.</span> \
+                <span class="n">SupportedHardwareVersion</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;supported_hw&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;Owner&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">Owner</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;StorageProfiles&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">StorageProfiles</span><span class="p">,</span> <span class="s1">&#39;ProviderVdcStorageProfile&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;storage_profiles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="n">pvdc</span><span class="o">.</span><span class="n">StorageProfiles</span><span class="o">.</span><span class="n">ProviderVdcStorageProfile</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;storage_profiles&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;NetworkPoolReferences&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">NetworkPoolReferences</span><span class="p">,</span> <span class="s1">&#39;NetworkPoolReference&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;network_pools&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">np</span> <span class="ow">in</span> <span class="n">pvdc</span><span class="o">.</span><span class="n">NetworkPoolReferences</span><span class="o">.</span><span class="n">NetworkPoolReference</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;network_pools&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="s1">&#39;MetadataEntry&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">me</span> <span class="ow">in</span> <span class="n">metadata</span><span class="o">.</span><span class="n">MetadataEntry</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;metadata: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">me</span><span class="o">.</span><span class="n">Key</span><span class="o">.</span><span class="n">text</span><span class="p">]</span> <span class="o">=</span> <span class="n">me</span><span class="o">.</span><span class="n">TypedValue</span><span class="o">.</span><span class="n">Value</span><span class="o">.</span><span class="n">text</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="p">,</span> <span class="s1">&#39;Vdcs&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">pvdc</span><span class="o">.</span><span class="n">Vdcs</span><span class="p">,</span> <span class="s1">&#39;Vdc&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vdc_refs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">pvdc</span><span class="o">.</span><span class="n">VdcReference</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vdc_refs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">refs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">refs</span><span class="p">,</span> <span class="s1">&#39;VdcReference&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vdc_refs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">refs</span><span class="o">.</span><span class="n">VdcReference</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vdc_refs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="to_human"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.to_human">[docs]</a><span class="k">def</span> <span class="nf">to_human</span><span class="p">(</span><span class="n">seconds</span><span class="p">):</span>
+    <span class="n">weeks</span> <span class="o">=</span> <span class="n">seconds</span> <span class="o">/</span> <span class="p">(</span><span class="mi">7</span> <span class="o">*</span> <span class="mi">24</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="n">days</span> <span class="o">=</span> <span class="n">seconds</span> <span class="o">/</span> <span class="p">(</span><span class="mi">24</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span> <span class="o">-</span> <span class="mi">7</span> <span class="o">*</span> <span class="n">weeks</span>
+    <span class="n">hours</span> <span class="o">=</span> <span class="n">seconds</span> <span class="o">/</span> <span class="p">(</span><span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span> <span class="o">-</span> <span class="mi">7</span> <span class="o">*</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">weeks</span> <span class="o">-</span> <span class="mi">24</span> <span class="o">*</span> <span class="n">days</span></div>
+    <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">w, </span><span class="si">%s</span><span class="s1">d, </span><span class="si">%s</span><span class="s1">h&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">weeks</span><span class="p">,</span> <span class="n">days</span><span class="p">,</span> <span class="n">hours</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="vapp_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.vapp_to_dict">[docs]</a><span class="k">def</span> <span class="nf">vapp_to_dict</span><span class="p">(</span><span class="n">vapp</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">access_control_settings</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vapp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_id</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="s1">&#39;ownerName&#39;</span> <span class="ow">in</span> <span class="n">vapp</span><span class="p">:</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">vapp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ownerName&#39;</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="p">,</span> <span class="s1">&#39;Owner&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">Owner</span><span class="p">,</span> <span class="s1">&#39;User&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">vapp</span><span class="o">.</span><span class="n">Owner</span><span class="o">.</span><span class="n">User</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+    <span class="n">items</span> <span class="o">=</span> <span class="n">vapp</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;//ovf:NetworkSection/ovf:Network&#39;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">NSMAP</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">network_name</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;ovf&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}name&#39;</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vapp-net-</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">network_name</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="p">,</span> <span class="s1">&#39;NetworkConfigSection&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">nc</span> <span class="ow">in</span> <span class="n">vapp</span><span class="o">.</span><span class="n">NetworkConfigSection</span><span class="o">.</span><span class="n">NetworkConfig</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">nc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;networkName&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">network_name</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vapp-net-</span><span class="si">%s</span><span class="s1">-mode&#39;</span> <span class="o">%</span> <span class="n">n</span><span class="p">]</span> <span class="o">=</span> \
+                        <span class="n">nc</span><span class="o">.</span><span class="n">Configuration</span><span class="o">.</span><span class="n">FenceMode</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="p">,</span> <span class="s1">&#39;LeaseSettingsSection&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">LeaseSettingsSection</span><span class="p">,</span> <span class="s1">&#39;DeploymentLeaseInSeconds&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;deployment_lease&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">to_human</span><span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">LeaseSettingsSection</span><span class="o">.</span><span class="n">DeploymentLeaseInSeconds</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">LeaseSettingsSection</span><span class="p">,</span> <span class="s1">&#39;StorageLeaseInSeconds&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;storage_lease&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">to_human</span><span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">LeaseSettingsSection</span><span class="o">.</span><span class="n">StorageLeaseInSeconds</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">LeaseSettingsSection</span><span class="p">,</span> <span class="s1">&#39;DeploymentLeaseExpiration&#39;</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;deployment_lease_expiration&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="n">vapp</span><span class="o">.</span><span class="n">LeaseSettingsSection</span><span class="o">.</span><span class="n">DeploymentLeaseExpiration</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="p">,</span> <span class="s1">&#39;Children&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">Children</span><span class="p">,</span> <span class="s1">&#39;Vm&#39;</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="n">vapp</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="s1">&#39;vm-</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">n</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">k</span> <span class="o">+</span> <span class="s1">&#39;: name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="n">items</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span>
+                <span class="s1">&#39;ovf:VirtualHardwareSection/ovf:Item&#39;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">NSMAP</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                <span class="n">element_name</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;rasd:ElementName&#39;</span><span class="p">,</span> <span class="n">NSMAP</span><span class="p">)</span>
+                <span class="n">connection</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;rasd:Connection&#39;</span><span class="p">,</span> <span class="n">NSMAP</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">quantity</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;rasd:VirtualQuantity&#39;</span><span class="p">,</span> <span class="n">NSMAP</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">quantity</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">NoneElement</span><span class="p">):</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;rasd:Description&#39;</span><span class="p">,</span> <span class="n">NSMAP</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">units</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;rasd:VirtualQuantityUnits&#39;</span><span class="p">,</span> <span class="n">NSMAP</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">units</span><span class="p">,</span> <span class="n">NoneElement</span><span class="p">):</span>
+                            <span class="n">units</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{:,}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">quantity</span><span class="p">),</span> <span class="n">units</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">connection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                            <span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;vcloud&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}ipAddressingMode&#39;</span><span class="p">),</span>
+                        <span class="n">connection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;vcloud&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}ipAddress&#39;</span><span class="p">))</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">element_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">env</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;ovfenv:Environment&#39;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">NSMAP</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span>
+                       <span class="p">(</span><span class="n">k</span><span class="p">,</span>
+                        <span class="s1">&#39;moid&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;ve&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}vCenterId&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="p">,</span> <span class="s1">&#39;StorageProfile&#39;</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s1">&#39;storage-profile&#39;</span><span class="p">)]</span> <span class="o">=</span> \
+                    <span class="n">vm</span><span class="o">.</span><span class="n">StorageProfile</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="p">,</span> <span class="s1">&#39;GuestCustomizationSection&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="p">,</span> <span class="s1">&#39;AdminPassword&#39;</span><span class="p">):</span>
+                    <span class="n">element_name</span> <span class="o">=</span> <span class="s1">&#39;password&#39;</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="o">.</span><span class="n">AdminPassword</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">element_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="p">,</span> <span class="s1">&#39;ComputerName&#39;</span><span class="p">):</span>
+                    <span class="n">element_name</span> <span class="o">=</span> <span class="s1">&#39;computer-name&#39;</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="o">.</span><span class="n">ComputerName</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">element_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="p">,</span> <span class="s1">&#39;NetworkConnectionSection&#39;</span><span class="p">):</span>
+                <span class="n">ncs</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">NetworkConnectionSection</span>
+                <span class="k">if</span> <span class="s1">&#39;PrimaryNetworkConnectionIndex&#39;</span> <span class="ow">in</span> <span class="n">ncs</span><span class="p">:</span>
+                    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="s1">&#39;primary-net&#39;</span><span class="p">)]</span> <span class="o">=</span> \
+                        <span class="n">ncs</span><span class="o">.</span><span class="n">PrimaryNetworkConnectionIndex</span><span class="o">.</span><span class="n">text</span>
+                <span class="k">if</span> <span class="s1">&#39;NetworkConnection&#39;</span> <span class="ow">in</span> <span class="n">ncs</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">nc</span> <span class="ow">in</span> <span class="n">ncs</span><span class="o">.</span><span class="n">NetworkConnection</span><span class="p">:</span>
+                        <span class="n">nci</span> <span class="o">=</span> <span class="n">nc</span><span class="o">.</span><span class="n">NetworkConnectionIndex</span><span class="o">.</span><span class="n">text</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: net-</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">nci</span><span class="p">)]</span> <span class="o">=</span> <span class="n">nc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;network&#39;</span><span class="p">)</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: net-</span><span class="si">%s</span><span class="s1">-mode&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">nci</span><span class="p">)]</span> <span class="o">=</span> \
+                            <span class="n">nc</span><span class="o">.</span><span class="n">IpAddressAllocationMode</span><span class="o">.</span><span class="n">text</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: net-</span><span class="si">%s</span><span class="s1">-connected&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">nci</span><span class="p">)]</span> <span class="o">=</span> \
+                            <span class="n">nc</span><span class="o">.</span><span class="n">IsConnected</span><span class="o">.</span><span class="n">text</span>
+                        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">nc</span><span class="p">,</span> <span class="s1">&#39;MACAddress&#39;</span><span class="p">):</span>
+                            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: net-</span><span class="si">%s</span><span class="s1">-mac&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">nci</span><span class="p">)]</span> <span class="o">=</span> \
+                                <span class="n">nc</span><span class="o">.</span><span class="n">MACAddress</span><span class="o">.</span><span class="n">text</span>
+                        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">nc</span><span class="p">,</span> <span class="s1">&#39;IpAddress&#39;</span><span class="p">):</span>
+                            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: net-</span><span class="si">%s</span><span class="s1">-ip&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span>
+                                                      <span class="n">nci</span><span class="p">)]</span> <span class="o">=</span> <span class="n">nc</span><span class="o">.</span><span class="n">IpAddress</span><span class="o">.</span><span class="n">text</span>
+            <span class="k">if</span> <span class="s1">&#39;VmSpecSection&#39;</span> <span class="ow">in</span> <span class="n">vm</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">setting</span> <span class="ow">in</span> <span class="n">vm</span><span class="o">.</span><span class="n">VmSpecSection</span><span class="o">.</span><span class="n">DiskSection</span><span class="o">.</span><span class="n">DiskSettings</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">setting</span><span class="p">,</span> <span class="s1">&#39;Disk&#39;</span><span class="p">):</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: attached-disk-</span><span class="si">%s</span><span class="s1">-name&#39;</span> <span class="o">%</span>
+                               <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">setting</span><span class="o">.</span><span class="n">DiskId</span><span class="o">.</span><span class="n">text</span><span class="p">)]</span> <span class="o">=</span> \
+                            <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">Disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: attached-disk-</span><span class="si">%s</span><span class="s1">-size-Mb&#39;</span> <span class="o">%</span>
+                               <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">setting</span><span class="o">.</span><span class="n">DiskId</span><span class="o">.</span><span class="n">text</span><span class="p">)]</span> <span class="o">=</span> \
+                            <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">SizeMb</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: attached-disk-</span><span class="si">%s</span><span class="s1">-bus&#39;</span> <span class="o">%</span>
+                               <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">setting</span><span class="o">.</span><span class="n">DiskId</span><span class="o">.</span><span class="n">text</span><span class="p">)]</span> <span class="o">=</span> \
+                            <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">BusNumber</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: attached-disk-</span><span class="si">%s</span><span class="s1">-unit&#39;</span> <span class="o">%</span>
+                               <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">setting</span><span class="o">.</span><span class="n">DiskId</span><span class="o">.</span><span class="n">text</span><span class="p">)]</span> <span class="o">=</span> \
+                            <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">setting</span><span class="o">.</span><span class="n">UnitNumber</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">VCLOUD_STATUS_MAP</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">access_control_settings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">access_control_settings</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="s1">&#39;MetadataEntry&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">me</span> <span class="ow">in</span> <span class="n">metadata</span><span class="o">.</span><span class="n">MetadataEntry</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;metadata: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">me</span><span class="o">.</span><span class="n">Key</span><span class="o">.</span><span class="n">text</span><span class="p">]</span> <span class="o">=</span> <span class="n">me</span><span class="o">.</span><span class="n">TypedValue</span><span class="o">.</span><span class="n">Value</span><span class="o">.</span><span class="n">text</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="task_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.task_to_dict">[docs]</a><span class="k">def</span> <span class="nf">task_to_dict</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">to_dict</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;Owner&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Owner</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner_href&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Owner</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Owner</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;User&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;Organization&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;organization&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Organization</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;Details&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;details&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">Details</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="disk_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.disk_to_dict">[docs]</a><span class="k">def</span> <span class="nf">disk_to_dict</span><span class="p">(</span><span class="n">disk</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_id</span><span class="p">(</span><span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">))</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">humanfriendly</span><span class="o">.</span><span class="n">format_size</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">)))</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;size_bytes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;busType&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;busType&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;busSubType&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;busSubType&#39;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s1">&#39;iops&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;iops&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">disk</span><span class="p">,</span> <span class="s1">&#39;Owner&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">Owner</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">disk</span><span class="p">,</span> <span class="s1">&#39;Description&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">Description</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">disk</span><span class="p">,</span> <span class="s1">&#39;StorageProfile&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;storageProfile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">StorageProfile</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">disk</span><span class="p">,</span> <span class="s1">&#39;attached_vms&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+       <span class="nb">hasattr</span><span class="p">(</span><span class="n">disk</span><span class="o">.</span><span class="n">attached_vms</span><span class="p">,</span> <span class="s1">&#39;VmReference&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vms_attached&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">attached_vms</span><span class="o">.</span><span class="n">VmReference</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;vms_attached_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk</span><span class="o">.</span><span class="n">attached_vms</span><span class="o">.</span><span class="n">VmReference</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s1">&#39;href&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/vm-&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="access_settings_to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.access_settings_to_dict">[docs]</a><span class="k">def</span> <span class="nf">access_settings_to_dict</span><span class="p">(</span><span class="n">control_access_params</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert access settings to dict.</span>
+
+<span class="sd">    :param control_access_params: (ControlAccessParamsType): xml object</span>
+<span class="sd">    representing access settings.</span>
+<span class="sd">    :return: (dict): dict representation of access control settings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">control_access_params</span><span class="p">,</span> <span class="s1">&#39;IsSharedToEveryone&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;is_shared_to_everyone&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">control_access_params</span><span class="p">[</span>
+            <span class="s1">&#39;IsSharedToEveryone&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">control_access_params</span><span class="p">,</span> <span class="s1">&#39;EveryoneAccessLevel&#39;</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;everyone_access_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">control_access_params</span><span class="p">[</span>
+            <span class="s1">&#39;EveryoneAccessLevel&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">control_access_params</span><span class="p">,</span> <span class="s1">&#39;AccessSettings&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">hasattr</span><span class="p">(</span><span class="n">control_access_params</span><span class="o">.</span><span class="n">AccessSettings</span><span class="p">,</span>
+                    <span class="s1">&#39;AccessSetting&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="nb">len</span><span class="p">(</span><span class="n">control_access_params</span><span class="o">.</span><span class="n">AccessSettings</span><span class="o">.</span><span class="n">AccessSetting</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">access_setting</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span>
+                <span class="n">control_access_params</span><span class="o">.</span><span class="n">AccessSettings</span><span class="o">.</span><span class="n">AccessSetting</span><span class="p">):</span>
+            <span class="n">access_str</span> <span class="o">=</span> <span class="s1">&#39;access_settings&#39;</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">access_setting</span><span class="p">,</span> <span class="s1">&#39;Subject&#39;</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_subject_name&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">access_str</span><span class="p">,</span> <span class="n">n</span><span class="p">)]</span> <span class="o">=</span> \
+                    <span class="n">access_setting</span><span class="o">.</span><span class="n">Subject</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">access_setting</span><span class="p">,</span> <span class="s1">&#39;Subject&#39;</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_subject_href&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">access_str</span><span class="p">,</span> <span class="n">n</span><span class="p">)]</span> <span class="o">=</span> \
+                    <span class="n">access_setting</span><span class="o">.</span><span class="n">Subject</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">access_setting</span><span class="p">,</span> <span class="s1">&#39;Subject&#39;</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_subject_type&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">access_str</span><span class="p">,</span> <span class="n">n</span><span class="p">)]</span> <span class="o">=</span> \
+                    <span class="n">access_setting</span><span class="o">.</span><span class="n">Subject</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">access_setting</span><span class="p">,</span> <span class="s1">&#39;AccessLevel&#39;</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_access_level&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">access_str</span><span class="p">,</span> <span class="n">n</span><span class="p">)]</span> <span class="o">=</span> \
+                    <span class="n">access_setting</span><span class="o">.</span><span class="n">AccessLevel</span>
+            <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="filter_attributes"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.filter_attributes">[docs]</a><span class="k">def</span> <span class="nf">filter_attributes</span><span class="p">(</span><span class="n">resource_type</span><span class="p">):</span>
+    <span class="n">attributes</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">resource_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;adminTask&#39;</span><span class="p">,</span> <span class="s1">&#39;task&#39;</span><span class="p">]:</span>
+        <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;objectName&#39;</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;startDate&#39;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">resource_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;adminVApp&#39;</span><span class="p">,</span> <span class="s1">&#39;vApp&#39;</span><span class="p">]:</span>
+        <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;numberOfVMs&#39;</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;numberOfCpus&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;memoryAllocationMB&#39;</span><span class="p">,</span> <span class="s1">&#39;storageKB&#39;</span><span class="p">,</span> <span class="s1">&#39;ownerName&#39;</span><span class="p">,</span> <span class="s1">&#39;isDeployed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;isEnabled&#39;</span><span class="p">,</span> <span class="s1">&#39;vdcName&#39;</span>
+        <span class="p">]</span>
+    <span class="k">elif</span> <span class="n">resource_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;adminCatalogItem&#39;</span><span class="p">,</span> <span class="s1">&#39;catalogItem&#39;</span><span class="p">]:</span>
+        <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;catalogName&#39;</span><span class="p">,</span> <span class="s1">&#39;storageKB&#39;</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;entityType&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;vdcName&#39;</span><span class="p">,</span> <span class="s1">&#39;isPublished&#39;</span><span class="p">,</span> <span class="s1">&#39;ownerName&#39;</span>
+        <span class="p">]</span></div>
+    <span class="k">return</span> <span class="n">attributes</span>
+
+
+<div class="viewcode-block" id="to_dict"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.to_dict">[docs]</a><span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resource_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">,</span>
+                                                               <span class="s1">&#39;type&#39;</span><span class="p">]):</span>
+    <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">attributes_res</span> <span class="o">=</span> <span class="n">filter_attributes</span><span class="p">(</span><span class="n">resource_type</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">attributes</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">attributes_res</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes_res</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">attrib</span><span class="p">:</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">attributes</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes</span>
+        <span class="k">elif</span> <span class="n">attributes_res</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attributes_res</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attr</span> <span class="o">==</span> <span class="s1">&#39;id&#39;</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">extract_id</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">exclude</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="to_camel_case"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.to_camel_case">[docs]</a><span class="k">def</span> <span class="nf">to_camel_case</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">n</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">n</span></div>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="stdout_xml"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.stdout_xml">[docs]</a><span class="k">def</span> <span class="nf">stdout_xml</span><span class="p">(</span><span class="n">the_xml</span><span class="p">,</span> <span class="n">is_colorized</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">the_xml</span><span class="p">,</span> <span class="n">pretty_print</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_colorized</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="n">highlight</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">lexers</span><span class="o">.</span><span class="n">XmlLexer</span><span class="p">(),</span>
+                      <span class="n">formatters</span><span class="o">.</span><span class="n">TerminalFormatter</span><span class="p">()))</span>
+    <span class="k">else</span><span class="p">:</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_admin_href"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.get_admin_href">[docs]</a><span class="k">def</span> <span class="nf">get_admin_href</span><span class="p">(</span><span class="n">href</span><span class="p">):</span></div>
+    <span class="k">return</span> <span class="n">href</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/api/&#39;</span><span class="p">,</span> <span class="s1">&#39;/api/admin/&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_admin_extension_href"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.utils.get_admin_extension_href">[docs]</a><span class="k">def</span> <span class="nf">get_admin_extension_href</span><span class="p">(</span><span class="n">href</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;/api/admin/&#39;</span> <span class="ow">in</span> <span class="n">href</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">href</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/api/admin/&#39;</span><span class="p">,</span> <span class="s1">&#39;/api/admin/extension/&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span></div>
+        <span class="k">return</span> <span class="n">href</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/api/&#39;</span><span class="p">,</span> <span class="s1">&#39;/api/admin/extension/&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, VMware.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

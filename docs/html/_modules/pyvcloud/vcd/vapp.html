@@ -1,0 +1,800 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pyvcloud.vcd.vapp &#8212; Pyvcloud  documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for pyvcloud.vcd.vapp</h1><div class="highlight"><pre>
+<span></span><span class="c1"># VMware vCloud Director Python SDK</span>
+<span class="c1"># Copyright (c) 2014-2018 VMware, Inc. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">deepcopy</span>
+
+<span class="kn">from</span> <span class="nn">lxml</span> <span class="k">import</span> <span class="n">etree</span>
+<span class="kn">from</span> <span class="nn">lxml</span> <span class="k">import</span> <span class="n">objectify</span>
+
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.acl</span> <span class="k">import</span> <span class="n">Acl</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">E</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">E_OVF</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">EntityType</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">FenceMode</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">find_link</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">NSMAP</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.client</span> <span class="k">import</span> <span class="n">RelationType</span>
+<span class="kn">from</span> <span class="nn">pyvcloud.vcd.vdc</span> <span class="k">import</span> <span class="n">VDC</span>
+
+
+<div class="viewcode-block" id="VApp"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp">[docs]</a><span class="k">class</span> <span class="nc">VApp</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">href</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">client</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">href</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;VApp initialization failed as arguments&quot;</span>
+                            <span class="s2">&quot; are either invalid or None&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">href</span> <span class="o">=</span> <span class="n">href</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">resource</span>
+        <span class="k">if</span> <span class="n">resource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">href</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_resource"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_resource">[docs]</a>    <span class="k">def</span> <span class="nf">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span>
+
+<div class="viewcode-block" id="VApp.reload"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.reload">[docs]</a>    <span class="k">def</span> <span class="nf">reload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">href</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_primary_ip"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_primary_ip">[docs]</a>    <span class="k">def</span> <span class="nf">get_primary_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;Children&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="p">,</span> <span class="s1">&#39;Vm&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">vm_name</span> <span class="o">==</span> <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">):</span>
+                    <span class="n">items</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span>
+                        <span class="s1">&#39;ovf:VirtualHardwareSection/ovf:Item&#39;</span><span class="p">,</span>
+                        <span class="n">namespaces</span><span class="o">=</span><span class="n">NSMAP</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="n">connection</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;rasd:Connection&#39;</span><span class="p">,</span> <span class="n">NSMAP</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">connection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">connection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                <span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;vcloud&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}ipAddress&#39;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;can</span><span class="se">\&#39;</span><span class="s1">t find ip address&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_admin_password"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_admin_password">[docs]</a>    <span class="k">def</span> <span class="nf">get_admin_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;Children&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="p">,</span> <span class="s1">&#39;Vm&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">vm_name</span> <span class="o">==</span> <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="p">,</span> <span class="s1">&#39;GuestCustomizationSection&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+                       <span class="nb">hasattr</span><span class="p">(</span><span class="n">vm</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="p">,</span> <span class="s1">&#39;AdminPassword&#39;</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="n">vm</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="o">.</span><span class="n">AdminPassword</span><span class="o">.</span><span class="n">text</span></div>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;can</span><span class="se">\&#39;</span><span class="s1">t find admin password&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_metadata"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_linked_resource</span><span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">DOWN</span><span class="p">,</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">METADATA</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.set_metadata"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.set_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">set_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                     <span class="n">domain</span><span class="p">,</span>
+                     <span class="n">visibility</span><span class="p">,</span>
+                     <span class="n">key</span><span class="p">,</span>
+                     <span class="n">value</span><span class="p">,</span>
+                     <span class="n">metadata_type</span><span class="o">=</span><span class="s1">&#39;MetadataStringValue&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">new_metadata</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">Metadata</span><span class="p">(</span>
+            <span class="n">E</span><span class="o">.</span><span class="n">MetadataEntry</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;xs:string&#39;</span>
+                <span class="p">},</span> <span class="n">E</span><span class="o">.</span><span class="n">Domain</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">visibility</span><span class="o">=</span><span class="n">visibility</span><span class="p">),</span> <span class="n">E</span><span class="o">.</span><span class="n">Key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                <span class="n">E</span><span class="o">.</span><span class="n">TypedValue</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;xsi&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}type&#39;</span><span class="p">:</span> <span class="s1">&#39;MetadataStringValue&#39;</span>
+                    <span class="p">},</span> <span class="n">E</span><span class="o">.</span><span class="n">Value</span><span class="p">(</span><span class="n">value</span><span class="p">))))</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">DOWN</span><span class="p">,</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">METADATA</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">ADD</span><span class="p">,</span>
+                                                <span class="n">EntityType</span><span class="o">.</span><span class="n">METADATA</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+                                                <span class="n">new_metadata</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_vm_moid"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_vm_moid">[docs]</a>    <span class="k">def</span> <span class="nf">get_vm_moid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">vapp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="p">,</span> <span class="s1">&#39;Children&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">vapp</span><span class="o">.</span><span class="n">Children</span><span class="p">,</span> <span class="s1">&#39;Vm&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="n">vapp</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">vm_name</span><span class="p">:</span>
+                    <span class="n">env</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;ovfenv:Environment&#39;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">NSMAP</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">env</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;ve&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}vCenterId&#39;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="VApp.set_lease"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.set_lease">[docs]</a>    <span class="k">def</span> <span class="nf">set_lease</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">deployment_lease</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">storage_lease</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">new_section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">LeaseSettingsSection</span>
+
+        <span class="n">new_section</span><span class="o">.</span><span class="n">DeploymentLeaseInSeconds</span> <span class="o">=</span> <span class="n">deployment_lease</span>
+        <span class="n">new_section</span><span class="o">.</span><span class="n">StorageLeaseInSeconds</span> <span class="o">=</span> <span class="n">storage_lease</span>
+        <span class="n">objectify</span><span class="o">.</span><span class="n">deannotate</span><span class="p">(</span><span class="n">new_section</span><span class="p">)</span>
+        <span class="n">etree</span><span class="o">.</span><span class="n">cleanup_namespaces</span><span class="p">(</span><span class="n">new_section</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/leaseSettingsSection/&#39;</span><span class="p">,</span> <span class="n">new_section</span><span class="p">,</span></div>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">LEASE_SETTINGS</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.change_owner"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.change_owner">[docs]</a>    <span class="k">def</span> <span class="nf">change_owner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">href</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Change the ownership of vApp to a given user.</span>
+
+<span class="sd">        :param href: Href of the new owner or user.</span>
+<span class="sd">        :return: None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">new_owner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Owner</span>
+        <span class="n">new_owner</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">,</span> <span class="n">href</span><span class="p">)</span>
+        <span class="n">objectify</span><span class="o">.</span><span class="n">deannotate</span><span class="p">(</span><span class="n">new_owner</span><span class="p">)</span>
+        <span class="n">etree</span><span class="o">.</span><span class="n">cleanup_namespaces</span><span class="p">(</span><span class="n">new_owner</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/owner/&#39;</span><span class="p">,</span> <span class="n">new_owner</span><span class="p">,</span></div>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">OWNER</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.deploy"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.deploy">[docs]</a>    <span class="k">def</span> <span class="nf">deploy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">power_on</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_customization</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Deploys the vApp.</span>
+
+<span class="sd">        Deploying the vApp will allocate all resources assigned to the vApp.</span>
+<span class="sd">        TODO: Add lease_deployment_seconds param after PR 2036925 is fixed.</span>
+<span class="sd">        https://jira.eng.vmware.com/browse/VCDA-465</span>
+<span class="sd">        :param power_on: (bool): Specifies whether to power on/off vapp/VM</span>
+
+<span class="sd">        on deployment. True by default, unless otherwise specified.</span>
+<span class="sd">        :param lease_deployment_seconds: (str): Deployment lease in seconds.</span>
+<span class="sd">        :param force_customization: (bool): Used to specify whether to force</span>
+
+<span class="sd">        customization on deployment, if not set default value is false.</span>
+
+<span class="sd">        :return: A :class:`lxml.objectify.StringElement` object describing</span>
+<span class="sd">            the asynchronous Task deploying the vApp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">deploy_vapp_params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">DeployVAppParams</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">power_on</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">deploy_vapp_params</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;powerOn&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">power_on</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">force_customization</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">deploy_vapp_params</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s1">&#39;forceCustomization&#39;</span><span class="p">,</span>
+                                   <span class="nb">str</span><span class="p">(</span><span class="n">force_customization</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">DEPLOY</span><span class="p">,</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">DEPLOY</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+            <span class="n">deploy_vapp_params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.undeploy"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.undeploy">[docs]</a>    <span class="k">def</span> <span class="nf">undeploy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;default&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">UndeployVAppParams</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">UndeployPowerAction</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">UNDEPLOY</span><span class="p">,</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">UNDEPLOY</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+            <span class="n">params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.power_off"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.power_off">[docs]</a>    <span class="k">def</span> <span class="nf">power_off</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">POWER_OFF</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.power_on"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.power_on">[docs]</a>    <span class="k">def</span> <span class="nf">power_on</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">POWER_ON</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.shutdown"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.shutdown">[docs]</a>    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Shutdown the vApp.</span>
+
+<span class="sd">        :return: A :class:`lxml.objectify.StringElement` object describing</span>
+<span class="sd">            the asynchronous Task shutting down the vApp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">POWER_SHUTDOWN</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.power_reset"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.power_reset">[docs]</a>    <span class="k">def</span> <span class="nf">power_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Resets a vApp.</span>
+
+<span class="sd">        :return: A :class:`lxml.objectify.StringElement` object describing</span>
+<span class="sd">            the asynchronous Task resetting the vApp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">POWER_RESET</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.reboot"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.reboot">[docs]</a>    <span class="k">def</span> <span class="nf">reboot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reboots the vApp.</span>
+
+<span class="sd">        :return: A :class:`lxml.objectify.StringElement` object describing</span>
+<span class="sd">            the asynchronous Task rebooting the vApp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">POWER_REBOOT</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.connect_vm"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.connect_vm">[docs]</a>    <span class="k">def</span> <span class="nf">connect_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;DHCP&#39;</span><span class="p">,</span> <span class="n">reset_mac_address</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;Children&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="p">,</span> <span class="s1">&#39;Vm&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">network_name</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+            <span class="k">for</span> <span class="n">nc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">NetworkConfigSection</span><span class="o">.</span><span class="n">NetworkConfig</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">nc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;networkName&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
+                    <span class="n">network_name</span> <span class="o">=</span> <span class="n">nc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;networkName&#39;</span><span class="p">)</span>
+                    <span class="k">break</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">[</span>
+                <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="o">.</span><span class="n">NetworkConnection</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+                    <span class="s1">&#39;network&#39;</span><span class="p">,</span> <span class="n">network_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">[</span>
+                <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="o">.</span><span class="n">NetworkConnection</span><span class="o">.</span><span class="n">IsConnected</span> <span class="o">=</span> \
+                <span class="n">E</span><span class="o">.</span><span class="n">IsConnected</span><span class="p">(</span><span class="s1">&#39;true&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">reset_mac_address</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="o">.</span>\
+                    <span class="n">NetworkConnection</span><span class="o">.</span><span class="n">MACAddress</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">MACAddress</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="o">.</span>\
+                <span class="n">NetworkConnection</span><span class="o">.</span><span class="n">IpAddressAllocationMode</span> <span class="o">=</span> \
+                <span class="n">E</span><span class="o">.</span><span class="n">IpAddressAllocationMode</span><span class="p">(</span><span class="n">mode</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_linked_resource</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="p">,</span>
+                <span class="n">RelationType</span><span class="o">.</span><span class="n">EDIT</span><span class="p">,</span> <span class="n">EntityType</span><span class="o">.</span><span class="n">NETWORK_CONNECTION_SECTION</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.attach_disk_to_vm"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.attach_disk_to_vm">[docs]</a>    <span class="k">def</span> <span class="nf">attach_disk_to_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">disk_href</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Attach the independent disk to the VM with the given name.</span>
+
+<span class="sd">        :param disk_href: (str): The href of the disk to be attached.</span>
+<span class="sd">        :param vm_name: (str): The name of the VM to which the disk</span>
+<span class="sd">            will be attached.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object describing</span>
+<span class="sd">            the asynchronous Task of attaching the disk.</span>
+
+<span class="sd">        :raises: Exception: If the named VM cannot be located or another error</span>
+<span class="sd">            occurs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">disk_attach_or_detach_params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">DiskAttachOrDetachParams</span><span class="p">(</span>
+            <span class="n">E</span><span class="o">.</span><span class="n">Disk</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">EntityType</span><span class="o">.</span><span class="n">DISK</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">href</span><span class="o">=</span><span class="n">disk_href</span><span class="p">))</span>
+        <span class="n">vm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vm</span><span class="p">(</span><span class="n">vm_name</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span>
+            <span class="n">vm</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">DISK_ATTACH</span><span class="p">,</span>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">DISK_ATTACH_DETACH_PARAMS</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+            <span class="n">disk_attach_or_detach_params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.detach_disk_from_vm"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.detach_disk_from_vm">[docs]</a>    <span class="k">def</span> <span class="nf">detach_disk_from_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">disk_href</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Detach the independent disk from the VM with the given name.</span>
+
+<span class="sd">        :param disk_href: (str): The href of the disk to be detached.</span>
+<span class="sd">        :param vm_name: (str): The name of the VM to which the disk</span>
+<span class="sd">            will be detached.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object describing</span>
+<span class="sd">            the asynchronous Task of detaching the disk.</span>
+
+<span class="sd">        :raises: Exception: If the named VM cannot be located or another error</span>
+<span class="sd">            occurs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">disk_attach_or_detach_params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">DiskAttachOrDetachParams</span><span class="p">(</span>
+            <span class="n">E</span><span class="o">.</span><span class="n">Disk</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">EntityType</span><span class="o">.</span><span class="n">DISK</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">href</span><span class="o">=</span><span class="n">disk_href</span><span class="p">))</span>
+        <span class="n">vm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vm</span><span class="p">(</span><span class="n">vm_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span>
+            <span class="n">vm</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">DISK_DETACH</span><span class="p">,</span>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">DISK_ATTACH_DETACH_PARAMS</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+            <span class="n">disk_attach_or_detach_params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_all_vms"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_all_vms">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_vms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Retrieve all the VMs in this vApp.</span>
+
+<span class="sd">        :return: ([vmType])  A array of :class:`lxml.objectify.StringElement`</span>
+<span class="sd">            object describing the requested VMs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;Children&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="p">,</span> <span class="s1">&#39;Vm&#39;</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">Children</span><span class="o">.</span><span class="n">Vm</span>
+        <span class="k">else</span><span class="p">:</span></div>
+            <span class="k">return</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="VApp.get_vm"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_vm">[docs]</a>    <span class="k">def</span> <span class="nf">get_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Retrieve the VM with the given name in this vApp.</span>
+
+<span class="sd">        :param vm_name: (str): The name of the VM.</span>
+<span class="sd">        :return: (vmType)  A :class:`lxml.objectify.StringElement` object</span>
+<span class="sd">            describing the requested VM.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_vms</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">vm_name</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">vm</span></div>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Can</span><span class="se">\&#39;</span><span class="s1">t find VM </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">vm_name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.add_disk_to_vm"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.add_disk_to_vm">[docs]</a>    <span class="k">def</span> <span class="nf">add_disk_to_vm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vm_name</span><span class="p">,</span> <span class="n">disk_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a virtual disk to a virtual machine in the vApp.</span>
+
+<span class="sd">        It assumes that the VM has already at least one virtual hard disk</span>
+<span class="sd">            and will attempt to create another one with similar</span>
+<span class="sd">            characteristics.</span>
+
+<span class="sd">        :param vm_name: (str): The name of the vm to be customized.</span>
+<span class="sd">        :param disk_size: (int): The size of the disk to be added, in MBs.</span>
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object describing the</span>
+<span class="sd">            asynchronous Task creating the disk.</span>
+
+<span class="sd">        :raises: Exception: If the named VM cannot be located or another error</span>
+<span class="sd">            occured.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vm</span><span class="p">(</span><span class="n">vm_name</span><span class="p">)</span>
+        <span class="n">disk_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/virtualHardwareSection/disks&#39;</span><span class="p">)</span>
+        <span class="n">last_disk</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">disk</span> <span class="ow">in</span> <span class="n">disk_list</span><span class="o">.</span><span class="n">Item</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}Description&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Hard disk&#39;</span><span class="p">:</span>
+                <span class="n">last_disk</span> <span class="o">=</span> <span class="n">disk</span>
+        <span class="k">assert</span> <span class="n">last_disk</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">new_disk</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">last_disk</span><span class="p">)</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span>
+            <span class="n">last_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}AddressOnParent&#39;</span><span class="p">]))</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">instance_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span>
+            <span class="n">last_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}InstanceID&#39;</span><span class="p">]))</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">new_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}AddressOnParent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">addr</span>
+        <span class="n">new_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}ElementName&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Hard disk </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">addr</span>
+        <span class="n">new_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}InstanceID&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">instance_id</span>
+        <span class="n">new_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span>
+                 <span class="s1">&#39;}VirtualQuantity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">disk_size</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+        <span class="n">new_disk</span><span class="p">[</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;rasd&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}HostResource&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+            <span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;vcloud&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}capacity&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">disk_size</span><span class="p">))</span>
+        <span class="n">disk_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_disk</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_resource</span><span class="p">(</span>
+            <span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/virtualHardwareSection/disks&#39;</span><span class="p">,</span> <span class="n">disk_list</span><span class="p">,</span></div>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">RASD_ITEMS_LIST</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.get_access_settings"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_access_settings">[docs]</a>    <span class="k">def</span> <span class="nf">get_access_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the access settings of the vapp.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">            the access settings of the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">acl</span> <span class="o">=</span> <span class="n">Acl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_resource</span><span class="p">())</span></div>
+        <span class="k">return</span> <span class="n">acl</span><span class="o">.</span><span class="n">get_access_settings</span><span class="p">()</span>
+
+<div class="viewcode-block" id="VApp.add_access_settings"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.add_access_settings">[docs]</a>    <span class="k">def</span> <span class="nf">add_access_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">access_settings_list</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add access settings to a particular vapp.</span>
+
+<span class="sd">        :param access_settings_list: (list of dict): list of access_setting</span>
+<span class="sd">            in the dict format. Each dict contains:</span>
+<span class="sd">            - type: (str): type of the subject. Only &#39;user&#39; allowed for vapp.</span>
+<span class="sd">            - name: (str): name of the user.</span>
+<span class="sd">            - access_level: (str): access_level of the particular subject. One</span>
+<span class="sd">                of &#39;ReadOnly&#39;, &#39;Change&#39;, &#39;FullControl&#39;</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">        the updated access control setting of the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">acl</span> <span class="o">=</span> <span class="n">Acl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_resource</span><span class="p">())</span></div>
+        <span class="k">return</span> <span class="n">acl</span><span class="o">.</span><span class="n">add_access_settings</span><span class="p">(</span><span class="n">access_settings_list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.remove_access_settings"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.remove_access_settings">[docs]</a>    <span class="k">def</span> <span class="nf">remove_access_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                               <span class="n">access_settings_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                               <span class="n">remove_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove access settings from a particular vapp.</span>
+
+<span class="sd">        :param access_settings_list: (list of dict): list of access_setting</span>
+<span class="sd">            in the dict format. Each dict contains:</span>
+<span class="sd">            - type: (str): type of the subject. Only &#39;user&#39; allowed for vapp.</span>
+<span class="sd">            - name: (str): name of the user.</span>
+<span class="sd">        :param remove_all: (bool) : True if all access settings of the vapp</span>
+<span class="sd">            should be removed</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">            the updated access control setting of the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">acl</span> <span class="o">=</span> <span class="n">Acl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_resource</span><span class="p">())</span></div>
+        <span class="k">return</span> <span class="n">acl</span><span class="o">.</span><span class="n">remove_access_settings</span><span class="p">(</span><span class="n">access_settings_list</span><span class="p">,</span> <span class="n">remove_all</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.share_with_org_members"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.share_with_org_members">[docs]</a>    <span class="k">def</span> <span class="nf">share_with_org_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">everyone_access_level</span><span class="o">=</span><span class="s1">&#39;ReadOnly&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Share the vapp to all members of the organization.</span>
+
+<span class="sd">        :param everyone_access_level: (str) : access level when sharing the</span>
+<span class="sd">            vapp with everyone. One of &#39;ReadOnly&#39;, &#39;Change&#39;, &#39;FullControl&#39;.</span>
+<span class="sd">            &#39;ReadOnly&#39; by default.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">            the updated access control setting of the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">acl</span> <span class="o">=</span> <span class="n">Acl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_resource</span><span class="p">())</span></div>
+        <span class="k">return</span> <span class="n">acl</span><span class="o">.</span><span class="n">share_with_org_members</span><span class="p">(</span><span class="n">everyone_access_level</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.unshare_from_org_members"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.unshare_from_org_members">[docs]</a>    <span class="k">def</span> <span class="nf">unshare_from_org_members</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Unshare the vapp from all members of current organization.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">            the updated access control setting of the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">acl</span> <span class="o">=</span> <span class="n">Acl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_resource</span><span class="p">())</span></div>
+        <span class="k">return</span> <span class="n">acl</span><span class="o">.</span><span class="n">unshare_from_org_members</span><span class="p">()</span>
+
+<div class="viewcode-block" id="VApp.get_all_networks"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_all_networks">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_networks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Helper method that returns the list of networks defined in the vApp.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object with the list</span>
+<span class="sd">            of vApp networks.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span>
+            <span class="s1">&#39;//ovf:NetworkSection/ovf:Network&#39;</span><span class="p">,</span>
+            <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;ovf&#39;</span><span class="p">:</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;ovf&#39;</span><span class="p">]</span></div>
+            <span class="p">})</span>
+
+<div class="viewcode-block" id="VApp.get_vapp_network_name"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.get_vapp_network_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_vapp_network_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the name of the network defined in the vApp by index.</span>
+
+<span class="sd">        :param index: (int): The index of the vApp network to retrieve.</span>
+<span class="sd">            0 if omitted.</span>
+
+<span class="sd">        :return:  A :class:`string` with the name of the requested network if</span>
+<span class="sd">            exists.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">networks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_networks</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">networks</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">networks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Can</span><span class="se">\&#39;</span><span class="s1">t find the specified vApp network&#39;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">networks</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="n">NSMAP</span><span class="p">[</span><span class="s1">&#39;ovf&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;}name&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.to_sourced_item"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.to_sourced_item">[docs]</a>    <span class="k">def</span> <span class="nf">to_sourced_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creates a VM SourcedItem from a VM specification.</span>
+
+<span class="sd">        :param spec: (dict) containing:</span>
+<span class="sd">            vapp: (resource): (required) source vApp or vAppTemplate resource</span>
+<span class="sd">            source_vm_name: (str): (required) source VM name</span>
+<span class="sd">            target_vm_name: (str): (optional) target VM name</span>
+<span class="sd">            hostname: (str): (optional) target guest hostname</span>
+<span class="sd">            password: (str): (optional) set the administrator password of this</span>
+<span class="sd">                machine to this value</span>
+<span class="sd">            password_auto: (bool): (optional) autogenerate administrator</span>
+<span class="sd">                password</span>
+<span class="sd">            password_reset: (bool): (optional) True if the administrator</span>
+<span class="sd">                password for this virtual machine must be reset after first use</span>
+<span class="sd">            cust_script: (str): (optional) script to run on guest customization</span>
+<span class="sd">            network: (str): (optional) Name of the vApp network to connect.</span>
+<span class="sd">                If omitted, the VM won&#39;t be connected to any network</span>
+<span class="sd">            storage_profile: (str): (optional) the name of the storage profile</span>
+<span class="sd">                to be used for this VM</span>
+
+<span class="sd">        :return: SourcedItem: (:class:`lxml.objectify.StringElement`): object</span>
+<span class="sd">            representing the &#39;SourcedItem&#39; xml object created from the</span>
+<span class="sd">            specification.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source_vapp</span> <span class="o">=</span> <span class="n">VApp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;vapp&#39;</span><span class="p">])</span>
+        <span class="n">source_vm_resource</span> <span class="o">=</span> <span class="n">source_vapp</span><span class="o">.</span><span class="n">get_vm</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;source_vm_name&#39;</span><span class="p">])</span>
+
+        <span class="n">sourced_item</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">SourcedItem</span><span class="p">(</span>
+            <span class="n">E</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span>
+                <span class="n">href</span><span class="o">=</span><span class="n">source_vm_resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">),</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">source_vm_resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">source_vm_resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">),</span>
+                <span class="nb">type</span><span class="o">=</span><span class="n">source_vm_resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)))</span>
+
+        <span class="n">vm_general_params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">VmGeneralParams</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s1">&#39;target_vm_name&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+            <span class="n">vm_general_params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">Name</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;target_vm_name&#39;</span><span class="p">]))</span>
+
+        <span class="n">vm_instantiation_param</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">InstantiationParams</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s1">&#39;network&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+            <span class="n">primary_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">source_vm_resource</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="o">.</span>
+                                <span class="n">PrimaryNetworkConnectionIndex</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;ip_allocation_mode&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                <span class="n">ip_allocation_mode</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s1">&#39;ip_allocation_mode&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ip_allocation_mode</span> <span class="o">=</span> <span class="s1">&#39;DHCP&#39;</span>
+            <span class="n">vm_instantiation_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">E</span><span class="o">.</span><span class="n">NetworkConnectionSection</span><span class="p">(</span>
+                    <span class="n">E_OVF</span><span class="o">.</span><span class="n">Info</span><span class="p">(),</span>
+                    <span class="n">E</span><span class="o">.</span><span class="n">NetworkConnection</span><span class="p">(</span>
+                        <span class="n">E</span><span class="o">.</span><span class="n">NetworkConnectionIndex</span><span class="p">(</span><span class="n">primary_index</span><span class="p">),</span>
+                        <span class="n">E</span><span class="o">.</span><span class="n">IsConnected</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+                        <span class="n">E</span><span class="o">.</span><span class="n">IpAddressAllocationMode</span><span class="p">(</span><span class="n">ip_allocation_mode</span><span class="o">.</span><span class="n">upper</span><span class="p">()),</span>
+                        <span class="n">network</span><span class="o">=</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;network&#39;</span><span class="p">])))</span>
+
+        <span class="n">needs_customization</span> <span class="o">=</span> <span class="s1">&#39;disk_size&#39;</span> <span class="ow">in</span> <span class="n">spec</span> <span class="ow">or</span> <span class="s1">&#39;password&#39;</span> <span class="ow">in</span> <span class="n">spec</span> <span class="ow">or</span> \
+            <span class="s1">&#39;cust_script&#39;</span> <span class="ow">in</span> <span class="n">spec</span> <span class="ow">or</span> <span class="s1">&#39;hostname&#39;</span> <span class="ow">in</span> <span class="n">spec</span>
+        <span class="k">if</span> <span class="n">needs_customization</span><span class="p">:</span>
+            <span class="n">guest_customization_param</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">GuestCustomizationSection</span><span class="p">(</span>
+                <span class="n">E_OVF</span><span class="o">.</span><span class="n">Info</span><span class="p">(),</span>
+                <span class="n">E</span><span class="o">.</span><span class="n">Enabled</span><span class="p">(</span><span class="kc">True</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;password&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">AdminPasswordEnabled</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+                <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">AdminPasswordAuto</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+                <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">E</span><span class="o">.</span><span class="n">AdminPassword</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s1">&#39;password_auto&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                    <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">E</span><span class="o">.</span><span class="n">AdminPasswordEnabled</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+                    <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">AdminPasswordAuto</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">E</span><span class="o">.</span><span class="n">AdminPasswordEnabled</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+            <span class="k">if</span> <span class="s1">&#39;password_reset&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">E</span><span class="o">.</span><span class="n">ResetPasswordRequired</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;password_reset&#39;</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="s1">&#39;cust_script&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">E</span><span class="o">.</span><span class="n">CustomizationScript</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;cust_script&#39;</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="s1">&#39;hostname&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                <span class="n">guest_customization_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">E</span><span class="o">.</span><span class="n">ComputerName</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]))</span>
+            <span class="n">vm_instantiation_param</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">guest_customization_param</span><span class="p">)</span>
+
+        <span class="n">vm_general_params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">NeedsCustomization</span><span class="p">(</span><span class="n">needs_customization</span><span class="p">))</span>
+        <span class="n">sourced_item</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vm_general_params</span><span class="p">)</span>
+        <span class="n">sourced_item</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vm_instantiation_param</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;storage_profile&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+            <span class="n">sp</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s1">&#39;storage_profile&#39;</span><span class="p">]</span>
+            <span class="n">storage_profile</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">StorageProfile</span><span class="p">(</span>
+                <span class="n">href</span><span class="o">=</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">),</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                <span class="nb">type</span><span class="o">=</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">sp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))</span>
+            <span class="n">sourced_item</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">storage_profile</span><span class="p">)</span>
+</div>
+        <span class="k">return</span> <span class="n">sourced_item</span>
+
+<div class="viewcode-block" id="VApp.add_vms"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.add_vms">[docs]</a>    <span class="k">def</span> <span class="nf">add_vms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">specs</span><span class="p">,</span>
+                <span class="n">deploy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">power_on</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">all_eulas_accepted</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Recompose the vApp and add VMs.</span>
+
+<span class="sd">        :param specs: An array of VM specifications, see `to_sourced_item()`</span>
+<span class="sd">            method for specification details.</span>
+<span class="sd">        :param deploy: (bool): True if the vApp should be deployed at</span>
+<span class="sd">            instantiation</span>
+<span class="sd">        :param power_on: (bool): True if the vApp should be powered-on at</span>
+<span class="sd">            instantiation</span>
+<span class="sd">        :param all_eulas_accepted: (bool): True confirms acceptance of all</span>
+<span class="sd">            EULAs in the vApp.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing a</span>
+<span class="sd">            sparsely populated vApp element.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">RecomposeVAppParams</span><span class="p">(</span>
+            <span class="n">deploy</span><span class="o">=</span><span class="s1">&#39;true&#39;</span> <span class="k">if</span> <span class="n">deploy</span> <span class="k">else</span> <span class="s1">&#39;false&#39;</span><span class="p">,</span>
+            <span class="n">powerOn</span><span class="o">=</span><span class="s1">&#39;true&#39;</span> <span class="k">if</span> <span class="n">power_on</span> <span class="k">else</span> <span class="s1">&#39;false&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_sourced_item</span><span class="p">(</span><span class="n">spec</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">all_eulas_accepted</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">AllEULAsAccepted</span><span class="p">(</span><span class="n">all_eulas_accepted</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">RECOMPOSE</span><span class="p">,</span></div>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">RECOMPOSE_VAPP_PARAMS</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.delete_vms"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.delete_vms">[docs]</a>    <span class="k">def</span> <span class="nf">delete_vms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Recompose the vApp and delete VMs.</span>
+
+<span class="sd">        :param names: A list or tuple of names (str) of the VMs to delete</span>
+<span class="sd">            from the vApp.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing a</span>
+<span class="sd">            sparsely populated vApp element.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">RecomposeVAppParams</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="n">vm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_vm</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">DeleteItem</span><span class="p">(</span><span class="n">href</span><span class="o">=</span><span class="n">vm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">RECOMPOSE</span><span class="p">,</span></div>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">RECOMPOSE_VAPP_PARAMS</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.connect_org_vdc_network"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.connect_org_vdc_network">[docs]</a>    <span class="k">def</span> <span class="nf">connect_org_vdc_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                <span class="n">orgvdc_network_name</span><span class="p">,</span>
+                                <span class="n">retain_ip</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                <span class="n">is_deployed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                <span class="n">fence_mode</span><span class="o">=</span><span class="n">FenceMode</span><span class="o">.</span><span class="n">BRIDGED</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Connect the vapp to an orgvdc network.</span>
+
+<span class="sd">        :param orgvdc_network_name: (str): name of the orgvdc network to be</span>
+<span class="sd">            connected</span>
+<span class="sd">        :param retain_ip: (bool): True if  the network resources such as</span>
+<span class="sd">            IP/MAC of router will be retained across deployments.</span>
+<span class="sd">        :param is_deployed: (bool): True if this orgvdc network has been</span>
+<span class="sd">            deployed.</span>
+<span class="sd">        :param fence_mode: (str): Controls connectivity to the parent</span>
+<span class="sd">            network. One of bridged, isolated or natRouted. bridged by default.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">            the asynchronous task that is connecting the network.</span>
+
+<span class="sd">        :raises: Exception: If orgvdc network does not exist in the vdc or if</span>
+<span class="sd">        it is already connected to the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vdc</span> <span class="o">=</span> <span class="n">VDC</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="p">,</span>
+            <span class="n">href</span><span class="o">=</span><span class="n">find_link</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">UP</span><span class="p">,</span>
+                           <span class="n">EntityType</span><span class="o">.</span><span class="n">VDC</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">href</span><span class="p">)</span>
+        <span class="n">orgvdc_networks</span> <span class="o">=</span> \
+            <span class="n">vdc</span><span class="o">.</span><span class="n">list_orgvdc_network_resources</span><span class="p">(</span><span class="n">orgvdc_network_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">orgvdc_networks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Orgvdc network </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s2"> does not exist in vdc &quot;</span>
+                            <span class="s2">&quot;</span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">orgvdc_network_name</span><span class="p">,</span>
+                                        <span class="n">vdc</span><span class="o">.</span><span class="n">get_resource</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)))</span>
+        <span class="n">orgvdc_network_href</span> <span class="o">=</span> <span class="n">orgvdc_networks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+
+        <span class="n">network_configuration_section</span> <span class="o">=</span> \
+            <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">NetworkConfigSection</span><span class="p">)</span>
+
+        <span class="n">matched_orgvdc_network_config</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">_search_for_network_config_by_name</span><span class="p">(</span>
+                <span class="n">orgvdc_network_name</span><span class="p">,</span> <span class="n">network_configuration_section</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matched_orgvdc_network_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Orgvdc network </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s2"> is already connected to &quot;</span>
+                            <span class="s2">&quot;vapp.&quot;</span> <span class="o">%</span> <span class="n">orgvdc_network_name</span><span class="p">)</span>
+
+        <span class="n">configuration</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">Configuration</span><span class="p">(</span>
+            <span class="n">E</span><span class="o">.</span><span class="n">ParentNetwork</span><span class="p">(</span><span class="n">href</span><span class="o">=</span><span class="n">orgvdc_network_href</span><span class="p">),</span> <span class="n">E</span><span class="o">.</span><span class="n">FenceMode</span><span class="p">(</span><span class="n">fence_mode</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">retain_ip</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configuration</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">RetainNetInfoAcrossDeployments</span><span class="p">(</span><span class="n">retain_ip</span><span class="p">))</span>
+        <span class="n">network_config</span> <span class="o">=</span> <span class="n">E</span><span class="o">.</span><span class="n">NetworkConfig</span><span class="p">(</span>
+            <span class="n">configuration</span><span class="p">,</span> <span class="n">networkName</span><span class="o">=</span><span class="n">orgvdc_network_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_deployed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">network_config</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">E</span><span class="o">.</span><span class="n">IsDeployed</span><span class="p">(</span><span class="n">is_deployed</span><span class="p">))</span>
+        <span class="n">network_configuration_section</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">network_config</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">NetworkConfigSection</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">EDIT</span><span class="p">,</span>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">NETWORK_CONFIG_SECTION</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+            <span class="n">network_configuration_section</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VApp.disconnect_org_vdc_network"><a class="viewcode-back" href="../../../pyvcloud.vcd.html#pyvcloud.vcd.vapp.VApp.disconnect_org_vdc_network">[docs]</a>    <span class="k">def</span> <span class="nf">disconnect_org_vdc_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orgvdc_network_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Disconnect the vapp from an orgvdc network.</span>
+
+<span class="sd">        :param orgvdc_network_name: (str): name of the orgvdc</span>
+<span class="sd">            network to be disconnected.</span>
+
+<span class="sd">        :return:  A :class:`lxml.objectify.StringElement` object representing</span>
+<span class="sd">            the asynchronous task that is disconnecting the network.</span>
+
+<span class="sd">        :raises: Exception: If orgvdc network is not connected to the vapp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">network_configuration_section</span> <span class="o">=</span> \
+            <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">NetworkConfigSection</span><span class="p">)</span>
+
+        <span class="n">matched_orgvdc_network_config</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">_search_for_network_config_by_name</span><span class="p">(</span>
+                <span class="n">orgvdc_network_name</span><span class="p">,</span> <span class="n">network_configuration_section</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matched_orgvdc_network_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Orgvdc network </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s2"> is not attached to the vapp&quot;</span>
+                            <span class="o">%</span> <span class="n">orgvdc_network_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">network_configuration_section</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">matched_orgvdc_network_config</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_linked_resource</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">NetworkConfigSection</span><span class="p">,</span> <span class="n">RelationType</span><span class="o">.</span><span class="n">EDIT</span><span class="p">,</span>
+            <span class="n">EntityType</span><span class="o">.</span><span class="n">NETWORK_CONFIG_SECTION</span><span class="o">.</span><span class="n">value</span><span class="p">,</span></div>
+            <span class="n">network_configuration_section</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_search_for_network_config_by_name</span><span class="p">(</span><span class="n">orgvdc_network_name</span><span class="p">,</span>
+                                           <span class="n">network_configuration_section</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Search for the NetworkConfig element by orgvdc network name.</span>
+
+<span class="sd">        :param orgvdc_network_name: (str): name of the orgvdc network to be</span>
+<span class="sd">            searched.</span>
+<span class="sd">        :param network_configuration_section :(lxml.objectify.StringElement):</span>
+<span class="sd">            NetworkConfigSection of a vapp.</span>
+
+<span class="sd">        :return: A :class:`lxml.objectify.StringElement` object</span>
+<span class="sd">            representing the  NetworkConfig element in NetworkConfigSection.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">network_configuration_section</span><span class="p">,</span> <span class="s1">&#39;NetworkConfig&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">network_config</span> <span class="ow">in</span> <span class="n">network_configuration_section</span><span class="o">.</span><span class="n">NetworkConfig</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">network_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;networkName&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">orgvdc_network_name</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">network_config</span></div>
+        <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, VMware.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
